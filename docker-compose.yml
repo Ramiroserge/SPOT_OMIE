@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    container_name: spot-omie-app
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    command: python app/main.py
