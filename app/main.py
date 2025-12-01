@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from app.product_sync import sync_products
+from product_sync import sync_products
 import logging
 
 logging.basicConfig(level=logging.INFO)
