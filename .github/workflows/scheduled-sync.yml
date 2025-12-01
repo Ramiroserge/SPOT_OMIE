@@ -1,0 +1,36 @@
+name: Scheduled SPOT to OMIE Sync
+
+on:
+  # Run every hour at minute 0
+  schedule:
+    - cron: '0 * * * *'
+  
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Run SPOT to OMIE Sync
+        env:
+          SPOT_ACCESS_KEY: ${{ secrets.SPOT_ACCESS_KEY }}
+          OMIE_APP_KEY: ${{ secrets.OMIE_APP_KEY }}
+          OMIE_APP_SECRET: ${{ secrets.OMIE_APP_SECRET }}
+        run: |
+          python app/main.py
+
