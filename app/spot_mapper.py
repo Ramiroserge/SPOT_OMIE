@@ -1,4 +1,4 @@
-from app.spot_client import SpotClient
+from spot_client import SpotClient
 from typing import List, Dict, Any
 import logging
 import pandas as pd

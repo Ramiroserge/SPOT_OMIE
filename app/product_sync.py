@@ -1,9 +1,9 @@
 import json
 import time
 import pandas as pd
-from app.spot_client import SpotClient
-from app.omie_client import OmieClient
-from app.spot_mapper import map_spot_to_omie
+from spot_client import SpotClient
+from omie_client import OmieClient
+from spot_mapper import map_spot_to_omie
 import logging
 
 logger = logging.getLogger(__name__)
