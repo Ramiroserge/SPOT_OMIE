@@ -78,17 +78,28 @@ class OmieClient:
 
         try:
             response = requests.post(self.url, json=payload, headers=self._build_headers())
+            
+            # Parse JSON response first to check for OMIE application errors
+            result = response.json()
+            
+            # Check if OMIE returned a fault (even with HTTP 500)
+            if result.get("faultstring") or result.get("faultcode"):
+                logger.warning(f"OMIE application error: {result.get('faultstring', 'Unknown error')}")
+                return result  # Return the error dict so caller can handle it
+            
+            # Only raise for HTTP errors if it's not an OMIE fault response
             response.raise_for_status()
+            
         except requests.exceptions.HTTPError as e:
             logger.error(f"HTTPError while calling OMIE: {e}")
             logger.error(f"OMIE response body:\n{response.text}")
             raise
+        except ValueError as e:
+            # JSON parsing failed
+            logger.error(f"Failed to parse OMIE response: {e}")
+            logger.error(f"Response body:\n{response.text}")
+            response.raise_for_status()
+            raise
 
-        result = response.json()
-
-        if result.get("faultstring"):
-            logger.error(f"OMIE application-level error: {result['faultstring']}")
-            return None
-
-        logger.info(f"Inserted product with integration code: {product.get('codigo_produto_integracao')}")
+        logger.info(f"✅ Inserted product with integration code: {product.get('codigo_produto_integracao')}")
         return result
