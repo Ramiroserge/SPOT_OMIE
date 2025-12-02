@@ -5,6 +5,39 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
+# NCM correction mapping for incorrect codes from SPOT API
+NCM_CORRECTIONS = {
+    "96171000": "90251990",  # 9617.10.00 > 9025.19.90
+    "9617.10.00": "9025.19.90",
+    "96081099": "96081000",  # 9608.10.99 > 9608.10.00
+    "9608.10.99": "9608.10.00"
+}
+
+def fix_ncm(ncm: str) -> str:
+    """
+    Corrects known incorrect NCM codes from SPOT API.
+    Returns the corrected NCM or the original if no correction needed.
+    """
+    if not ncm:
+        return ncm
+    
+    # Remove dots and normalize
+    ncm_normalized = ncm.replace(".", "")
+    
+    # Check if correction is needed
+    if ncm_normalized in NCM_CORRECTIONS:
+        corrected = NCM_CORRECTIONS[ncm_normalized]
+        logger.info(f"🔧 NCM correction: {ncm} → {corrected}")
+        return corrected
+    
+    # Also check with dots
+    if ncm in NCM_CORRECTIONS:
+        corrected = NCM_CORRECTIONS[ncm]
+        logger.info(f"🔧 NCM correction: {ncm} → {corrected}")
+        return corrected
+    
+    return ncm_normalized
+
 def fetch_spot_products(spot: SpotClient) -> List[Dict[str, Any]]:
     response = spot.fetch_products()
     products = response.get("Products", [])
@@ -31,7 +64,8 @@ def map_spot_to_omie(spot_product: Dict[str, Any]) -> Dict[str, Any]:
     cor = spot_product.get("Colors").strip()
     descricao = spot_product.get("Name")
     descr_detalhada = spot_product.get("Description")
-    ncm = spot_product.get("Taric")
+    ncm_original = spot_product.get("Taric")
+    ncm = fix_ncm(ncm_original)  # Apply NCM correction
     peso_bruto = round(spot_product.get("Weight", 0) / 1000, 3)
     desc_truncada = f"{descricao} - Cor: {cor} - Codigo: {integration_code}"
     return {
