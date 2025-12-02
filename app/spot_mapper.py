@@ -10,7 +10,8 @@ NCM_CORRECTIONS = {
     "96171000": "90251990",  # 9617.10.00 > 9025.19.90
     "9617.10.00": "9025.19.90",
     "96081099": "96081000",  # 9608.10.99 > 9608.10.00
-    "9608.10.99": "9608.10.00"
+    "9608.10.99": "9608.10.00",
+    "9608109900": "96081000",  # Handle 10-digit version
 }
 
 def fix_ncm(ncm: str) -> str:
@@ -24,13 +25,18 @@ def fix_ncm(ncm: str) -> str:
     # Remove dots and normalize
     ncm_normalized = ncm.replace(".", "")
     
-    # Check if correction is needed
+    # NCM should be 8 digits, truncate if longer
+    if len(ncm_normalized) > 8:
+        logger.warning(f"⚠️ NCM has {len(ncm_normalized)} digits, truncating to 8: {ncm_normalized}")
+        ncm_normalized = ncm_normalized[:8]
+    
+    # Check if correction is needed (exact match)
     if ncm_normalized in NCM_CORRECTIONS:
         corrected = NCM_CORRECTIONS[ncm_normalized]
         logger.info(f"🔧 NCM correction: {ncm} → {corrected}")
         return corrected
     
-    # Also check with dots
+    # Also check original with dots
     if ncm in NCM_CORRECTIONS:
         corrected = NCM_CORRECTIONS[ncm]
         logger.info(f"🔧 NCM correction: {ncm} → {corrected}")
