@@ -1,8 +1,28 @@
 import requests
 import logging
 from typing import List, Dict, Any, Optional
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 logger = logging.getLogger(__name__)
+
+# Retry configuration for transient network errors
+RETRY_CONFIG = {
+    "stop": stop_after_attempt(5),  # Max 5 attempts
+    "wait": wait_exponential(multiplier=1, min=2, max=30),  # 2s, 4s, 8s, 16s, 30s
+    "retry": retry_if_exception_type((
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+        requests.exceptions.ChunkedEncodingError,
+    )),
+    "before_sleep": before_sleep_log(logger, logging.WARNING),
+    "reraise": True,
+}
 
 class OmieClient:
     def __init__(self, app_key: str, app_secret: str):
@@ -15,6 +35,20 @@ class OmieClient:
 
     def _build_auth_payload(self) -> Dict[str, str]:
         return {"app_key": self.app_key, "app_secret": self.app_secret}
+
+    @retry(**RETRY_CONFIG)
+    def _make_request(self, payload: Dict[str, Any]) -> requests.Response:
+        """
+        Makes a POST request to OMIE API with automatic retry on transient failures.
+        Retries up to 5 times with exponential backoff (2s, 4s, 8s, 16s, 30s).
+        """
+        response = requests.post(
+            self.url,
+            json=payload,
+            headers=self._build_headers(),
+            timeout=60  # 60 second timeout
+        )
+        return response
 
     def list_products(self, page: int = 1, page_size: int = 500) -> List[Dict[str, Any]]:
         """
@@ -35,7 +69,7 @@ class OmieClient:
             }
 
             try:
-                response = requests.post(self.url, json=payload, headers=self._build_headers())
+                response = self._make_request(payload)
                 response.raise_for_status()
                 data = response.json()
                 products = data.get("produto_servico_cadastro", [])
@@ -53,10 +87,14 @@ class OmieClient:
 
                 page += 1
 
+            except requests.exceptions.ConnectionError as e:
+                logging.error(f"Connection error on ListarProdutos (page {page}) after all retries: {e}")
+                logging.warning(f"Skipping remaining pages due to connection error on page {page}")
+                break
             except requests.HTTPError as e:
                 logging.error(f"OMIE error on ListarProdutos (page {page}): {e}")
                 logging.error(f"OMIE response:\n{response.text}")
-                logging.warning("Skipping remaining pages due to error on page {page}")
+                logging.warning(f"Skipping remaining pages due to error on page {page}")
                 break
 
         logging.info(f"Fetched {len(all_products)} products from OMIE.")
@@ -77,7 +115,7 @@ class OmieClient:
         pprint.pprint(payload)
 
         try:
-            response = requests.post(self.url, json=payload, headers=self._build_headers())
+            response = self._make_request(payload)
             
             # Parse JSON response first to check for OMIE application errors
             result = response.json()
@@ -90,6 +128,9 @@ class OmieClient:
             # Only raise for HTTP errors if it's not an OMIE fault response
             response.raise_for_status()
             
+        except requests.exceptions.ConnectionError as e:
+            logger.error(f"Connection error while calling OMIE after all retries: {e}")
+            raise
         except requests.exceptions.HTTPError as e:
             logger.error(f"HTTPError while calling OMIE: {e}")
             logger.error(f"OMIE response body:\n{response.text}")
