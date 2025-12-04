@@ -157,14 +157,6 @@ def _log_execution_summary(products, inserted, skipped_existing, skipped_no_ref,
             logger.info(f"  • [{p['code']}] {p['name']}")
             logger.info(f"    Error: {p['error_code']} - {p['error_message']}")
     
-    # List skipped products (already exist)
-    if skipped_existing:
-        logger.info("")
-        logger.info("⏭️ PRODUCTS SKIPPED (already in OMIE):")
-        logger.info("-" * 40)
-        for p in skipped_existing:
-            logger.info(f"  • [{p['code']}] {p['name']}")
-    
     # List products without reference
     if skipped_no_ref:
         logger.info("")
