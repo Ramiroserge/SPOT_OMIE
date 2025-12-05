@@ -2,8 +2,8 @@ name: Scheduled SPOT to OMIE Sync
 
 on:
   # Run every hour at minute 0
-  schedule:
-    - cron: '0 * * * *'
+  #schedule:
+    #- cron: '0 * * * *'
   
   # Allow manual trigger
   workflow_dispatch:
@@ -33,4 +33,5 @@ jobs:
           OMIE_APP_SECRET: ${{ secrets.OMIE_APP_SECRET }}
         run: |
           python app/main.py
+
 
